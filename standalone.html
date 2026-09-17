@@ -447,7 +447,7 @@ function hm(min){ const h=Math.floor(min/60), m=Math.round(min%60); return (h?h+
 function drawMap(geo){
   if(typeof L==='undefined')return;
   $('map').style.display='block';
-  if(!map){ map=L.map('map',{scrollWheelZoom:false}); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map); }
+  if(!map){ map=L.map('map',{scrollWheelZoom:false}).setView([38.5,23.5],6); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map); }
   if(routeLine)map.removeLayer(routeLine); markers.forEach(m=>map.removeLayer(m)); markers=[];
   routeLine=L.geoJSON(geo,{style:{color:'#0d9488',weight:5}}).addTo(map);
   markers.push(L.circleMarker([coordsFrom.lat,coordsFrom.lon],{radius:8,color:'#fff',weight:2,fillColor:'#16a34a',fillOpacity:1}).addTo(map).bindTooltip('Αφετηρία'));
