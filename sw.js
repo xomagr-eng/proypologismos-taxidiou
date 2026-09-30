@@ -1,5 +1,5 @@
 /* Service Worker — Προϋπολογισμός Ταξιδιού (offline/PWA) */
-const VERSION = 'pt-v4';
+const VERSION = 'pt-v5';
 const CORE = VERSION + '-core';
 const RUNTIME = VERSION + '-runtime';
 
@@ -11,7 +11,8 @@ const CORE_ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './leaflet.min.css',
-  './leaflet.min.js'
+  './leaflet.min.js',
+  './qrcode.min.js'
 ];
 
 self.addEventListener('install', e => {

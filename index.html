@@ -163,6 +163,16 @@
   .cmp th,.cmp td{border:1px solid var(--line);padding:6px 8px;text-align:right;white-space:nowrap}
   .cmp th:first-child,.cmp td:first-child{text-align:left}
   .cmp tr.win td{background:rgba(22,163,74,.12);font-weight:700}
+  .fav{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:.8rem;cursor:pointer;color:var(--ink)}
+  .fav b{font-weight:700} .fav .x{color:var(--bad);font-weight:700;cursor:pointer}
+  .overlay{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:380px;width:100%;box-shadow:var(--shadow);text-align:center}
+  .modal h3{margin:0 0 10px;font-size:1.05rem}
+  .modal p{font-size:.9rem;color:var(--muted);margin:6px 0}
+  .modal .steps{text-align:left;font-size:.9rem;margin:12px 0}
+  .modal .steps li{margin:8px 0}
+  #qrBox{display:flex;justify-content:center;margin:14px 0}
+  #qrBox svg,#qrBox img{width:200px;height:200px}
 </style>
 </head>
 <body>
@@ -180,6 +190,7 @@
   <!-- 1. Διαδρομή -->
   <section class="card">
     <h2><span class="n">1</span> Διαδρομή</h2>
+    <div id="favBar" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
     <div class="field ac">
       <label>Αφετηρία <button id="myLocBtn" style="float:right;background:none;border:0;color:var(--brand);font-size:.78rem;font-weight:700;cursor:pointer;padding:0">📍 Η θέση μου</button></label>
       <input id="fromInput" placeholder="π.χ. Αθήνα, Πλατεία Συντάγματος" autocomplete="off">
@@ -198,7 +209,18 @@
         <input type="number" id="travelers" value="1" min="1" step="1" inputmode="numeric">
       </div>
     </div>
-    <button class="btn" id="calcBtn" style="margin-top:12px">📍 Υπολόγισε απόσταση & κόστη</button>
+    <div class="toggle" style="margin-top:10px">
+      <input type="checkbox" id="retDiff">
+      <label for="retDiff" style="margin:0;color:var(--ink)">↩️ Διαφορετική απόσταση επιστροφής</label>
+    </div>
+    <div class="field" id="retKmWrap" style="display:none;margin-top:8px">
+      <label>Απόσταση επιστροφής (χλμ)</label>
+      <input type="number" id="retKm" value="" min="0" inputmode="decimal" placeholder="π.χ. αν γυρνάς από άλλο δρόμο">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn" id="calcBtn" style="flex:1">📍 Υπολόγισε απόσταση & κόστη</button>
+      <button class="btn sec" id="favBtn" title="Αποθήκευση ως αγαπημένη" style="width:auto">⭐</button>
+    </div>
     <div class="status" id="routeStatus"></div>
     <div class="distbox" id="distBox" style="display:none;margin-top:12px">
       <span>Απόσταση (μονή): <b id="distKm">–</b></span>
@@ -217,7 +239,7 @@
   <!-- 2. Παράμετροι -->
   <section class="card">
     <h2><span class="n">2</span> Παράμετροι κόστους</h2>
-    <div class="row">
+    <div class="row3">
       <div class="field">
         <label>Βενζίνη €/λίτρο</label>
         <input type="number" id="pBenzine" value="1.75" step="0.001" inputmode="decimal">
@@ -225,6 +247,10 @@
       <div class="field">
         <label>Πετρέλαιο €/λίτρο</label>
         <input type="number" id="pDiesel" value="1.65" step="0.001" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label>Ρεύμα €/kWh</label>
+        <input type="number" id="pKwh" value="0.20" step="0.001" inputmode="decimal">
       </div>
     </div>
     <button class="btn sec" id="fuelBtn">⛽ Ενημέρωση μέσων τιμών καυσίμων</button>
@@ -325,11 +351,39 @@
     <div class="l">Σύνολο (<span id="footMode">αυτοκίνητο</span>)</div>
   </div>
   <button class="btn sec" id="resetBtn" style="width:auto">↺</button>
+  <button class="btn sec" id="qrBtn" style="width:auto" title="QR κώδικας">📱</button>
   <button class="btn sec" id="shareBtn" style="width:auto">📤</button>
   <button class="btn" id="printBtn" style="width:auto">🖨️ PDF</button>
 </div>
 
+<!-- QR modal -->
+<div class="overlay" id="qrOverlay" style="display:none">
+  <div class="modal">
+    <h3>📱 Άνοιξέ το στο κινητό</h3>
+    <p>Σκάναρε τον κωδικό με την κάμερα του κινητού για να ανοίξεις την εφαρμογή.</p>
+    <div id="qrBox"></div>
+    <p id="qrUrl" style="word-break:break-all;font-size:.78rem"></p>
+    <button class="btn" id="qrClose">Κλείσιμο</button>
+  </div>
+</div>
+
+<!-- Onboarding modal -->
+<div class="overlay" id="onbOverlay" style="display:none">
+  <div class="modal">
+    <h3>🧭 Καλώς ήρθες!</h3>
+    <p>Υπολόγισε το κόστος οποιουδήποτε ταξιδιού σε 3 βήματα:</p>
+    <ol class="steps">
+      <li><b>1.</b> Γράψε <b>αφετηρία & προορισμό</b> (ή πάτα «📍 Η θέση μου») και «Υπολόγισε».</li>
+      <li><b>2.</b> Δες τη <b>σύγκριση μέσων</b> (αυτοκίνητο, τρένο, ΚΤΕΛ, αεροπλάνο…) με καύσιμα & πραγματικά διόδια.</li>
+      <li><b>3.</b> Πρόσθεσε <b>διαμονή/έξοδα</b>, αποθήκευσε & σύγκρινε ταξίδια, ή εξήγαγε <b>PDF</b>.</li>
+    </ol>
+    <p style="font-size:.8rem">💡 Γύρνα το κινητό <b>οριζόντια</b> για μεγαλύτερη προβολή. Πρόσθεσέ το στην αρχική οθόνη για χρήση σαν εφαρμογή.</p>
+    <button class="btn" id="onbClose">Ξεκίνα ✓</button>
+  </div>
+</div>
+
 <script src="leaflet.min.js"></script>
+<script src="qrcode.min.js"></script>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -621,34 +675,43 @@ function updateTollView(){
   v.value = distKm>0 ? carBase.toLocaleString('el-GR',{maximumFractionDigits:2,minimumFractionDigits:2})+' €' : '—';
 }
 
+/* ---------- Ξεχωριστή επιστροφή ---------- */
+function roundOn(){ return $('roundTrip').checked; }
+function retActive(){ return roundOn() && $('retDiff').checked && (+$('retKm').value>0); }
+function retLegKm(){ return retActive()? (+$('retKm').value||0) : distKm; }
+function totalDistKm(){ return roundOn()? (distKm + retLegKm()) : distKm; }
+
 /* ---------- Render μέσων ---------- */
 function calcMode(k){
   const m=MODES[k]; const c=mcfg(k);
-  const trips = $('roundTrip').checked?2:1;
   const nppl = Math.max(1, +$('travelers').value||1);
-  const totalKm = distKm*trips;
-  let total=0, detail={}, per=0, src='ζωντανό', badge='live';
+  const totalKm = totalDistKm();
+  const ft = c.fuel||m.fuel;
+  let total=0, detail={}, per=0, src='ζωντανό', badge='live', co2f=m.co2;
   if(m.kind==='fuel'){
-    const cons = c.cons ?? m.cons;
-    const price = (c.fuel||m.fuel)==='diesel' ? (+$('pDiesel').value||0) : (+$('pBenzine').value||0);
+    let cons = c.cons;
+    if(cons==null) cons = ft==='electric' ? (k==='moto'?7:18) : ft==='hybrid' ? (k==='moto'?3:4.5) : m.cons;
+    const price = ft==='diesel' ? (+$('pDiesel').value||0) : ft==='electric' ? (+$('pKwh').value||0) : (+$('pBenzine').value||0);
     const fuelCost = (totalKm/100)*cons*price;
-    const tollCost = tollSingle(k)*trips;
-    total = fuelCost + tollCost;
-    per = m.share ? total/nppl : total*nppl; // αυτοκίνητο μοιράζεται· μηχανή ανά άτομο
-    if(m.share){ detail={'Καύσιμα':fuelCost,'Διόδια':tollCost}; per=total/nppl; }
-    else { detail={'Καύσιμα':fuelCost,'Διόδια':tollCost}; total=total*nppl; per=total/nppl; }
+    // διόδια: μετάβαση + (επιστροφή: ίδιοι σταθμοί ή εκτίμηση €/χλμ αν διαφορετική)
+    const outToll = tollSingle(k);
+    const retToll = !roundOn()? 0 : (retActive()? (retLegKm()*(+$('tollRate').value||0)*(k==='moto'?0.6:1)) : outToll);
+    const tollCost = outToll + retToll;
+    if(ft==='electric') co2f = k==='moto'?25:55; else if(ft==='hybrid') co2f = m.co2*0.7;
+    const fLabel = ft==='electric'?'Ρεύμα':(ft==='hybrid'?'Καύσιμα (υβρ.)':'Καύσιμα');
+    if(m.share){ total=fuelCost+tollCost; detail={[fLabel]:fuelCost,'Διόδια':tollCost}; per=total/nppl; }
+    else { const one=fuelCost+tollCost; total=one*nppl; detail={[fLabel]:fuelCost,'Διόδια':tollCost}; per=one; }
   } else {
-    // εισιτήριο (ανά άτομο) × άτομα × διαδρομές
-    let oneway = c.price!=null ? c.price : (m.base + distKm*(c.rate??m.rate));
-    const perPerson = oneway*trips;
-    total = perPerson*nppl;
-    per = perPerson;
-    src='εκτίμηση'; badge='est';
-    if(c.price!=null){ src='χειροκίνητο'; badge='est'; }
+    // εισιτήριο ανά άτομο: μετάβαση + επιστροφή
+    const oneway = c.price!=null ? c.price : (m.base + distKm*(c.rate??m.rate));
+    const retw = !roundOn()? 0 : (c.price!=null ? c.price : (m.base + retLegKm()*(c.rate??m.rate)));
+    const perPerson = oneway + retw;
+    total = perPerson*nppl; per = perPerson;
+    src='εκτίμηση'; badge='est'; if(c.price!=null) src='χειροκίνητο';
     detail={'Εισιτήριο/άτομο (μονό)':oneway};
   }
   // Εκτίμηση CO₂ (κιλά) για όλο το ταξίδι
-  const co2Kg = m.kind==='fuel' ? (totalKm*(m.co2)/1000) : (totalKm*(m.co2)/1000*nppl);
+  const co2Kg = m.kind==='fuel' ? (totalKm*co2f/1000) : (totalKm*co2f/1000*nppl);
   return {total, per, detail, badge, src, m, c, co2:co2Kg};
 }
 
@@ -663,14 +726,17 @@ function renderModes(){
     el.className='mode'+(r.k===chosen?' open':'')+(r.k===best?' best':'')+(distKm<=0?' off':'');
     let editRows='';
     if(m.kind==='fuel'){
+      const fnow=(c.fuel||m.fuel);
       editRows=`
         <div class="minirow">
-          <div class="field" style="margin:0"><label>Κατανάλωση (λ/100χλμ)</label>
-            <input type="number" step="0.1" data-k="${r.k}" data-f="cons" value="${c.cons??m.cons}" inputmode="decimal"></div>
+          <div class="field" style="margin:0"><label>Κατανάλωση (${fnow==='electric'?'kWh':'λ'}/100χλμ)</label>
+            <input type="number" step="0.1" data-k="${r.k}" data-f="cons" value="${c.cons??(fnow==='electric'?(r.k==='moto'?7:18):m.cons)}" inputmode="decimal"></div>
           <div class="field" style="margin:0"><label>Καύσιμο</label>
             <select data-k="${r.k}" data-f="fuel">
-              <option value="benzine" ${(c.fuel||m.fuel)==='benzine'?'selected':''}>Βενζίνη</option>
-              <option value="diesel" ${(c.fuel||m.fuel)==='diesel'?'selected':''}>Πετρέλαιο</option>
+              <option value="benzine" ${fnow==='benzine'?'selected':''}>Βενζίνη</option>
+              <option value="diesel" ${fnow==='diesel'?'selected':''}>Πετρέλαιο</option>
+              <option value="hybrid" ${fnow==='hybrid'?'selected':''}>Υβριδικό</option>
+              <option value="electric" ${fnow==='electric'?'selected':''}>Ηλεκτρικό</option>
             </select></div>
         </div>`;
     } else {
@@ -795,7 +861,7 @@ function buildPrintSummary(x){
 }
 
 /* ---------- Persist πεδίων ---------- */
-const F_IDS=['fromInput','toInput','travelers','pBenzine','pDiesel','tollAuto','tollMethod','attikiAuto','tollRate','tollExtra','nights','nightCost','rooms','foodDay','days','extra','roundTrip'];
+const F_IDS=['fromInput','toInput','travelers','pBenzine','pDiesel','pKwh','tollAuto','tollMethod','attikiAuto','tollRate','tollExtra','nights','nightCost','rooms','foodDay','days','extra','roundTrip','retDiff','retKm'];
 function saveState(){
   const s={};
   F_IDS.forEach(id=>{const el=$(id); s[id]=el.type==='checkbox'?el.checked:el.value;});
@@ -874,12 +940,57 @@ function renderTrips(){
 }
 
 /* ---------- Λοιπά κουμπιά & listeners ---------- */
-['travelers','pBenzine','pDiesel','tollRate','tollExtra','nights','nightCost','rooms','foodDay','days','extra','roundTrip']
+['travelers','pBenzine','pDiesel','pKwh','tollRate','tollExtra','nights','nightCost','rooms','foodDay','days','extra','roundTrip','retKm']
   .forEach(id=>$(id).addEventListener('input',()=>recalc(true)));
 ['tollAuto','tollMethod','attikiAuto'].forEach(id=>$(id).addEventListener('change',()=>recalc(true)));
+$('retDiff').addEventListener('change',()=>{ $('retKmWrap').style.display=$('retDiff').checked?'block':'none'; recalc(true); });
 $('saveTripBtn').onclick=saveTrip;
 $('printBtn').onclick=()=>window.print();
 $('resetBtn').onclick=()=>{ if(confirm('Καθαρισμός όλων των πεδίων;')){ localStorage.removeItem('pt_state'); localStorage.removeItem('pt_cfg'); location.reload(); } };
+
+/* ---------- ⭐ Αγαπημένες διαδρομές ---------- */
+function getFavs(){ try{return JSON.parse(localStorage.getItem('pt_favs')||'[]');}catch(e){return[];} }
+function setFavs(a){ localStorage.setItem('pt_favs',JSON.stringify(a)); }
+function renderFavs(){
+  const favs=getFavs(), bar=$('favBar');
+  if(!favs.length){ bar.style.display='none'; bar.innerHTML=''; return; }
+  bar.style.display='flex';
+  bar.innerHTML='<span style="font-size:.72rem;color:var(--muted);align-self:center">⭐ Αγαπημένες:</span>'+
+    favs.map((f,i)=>`<span class="fav" data-i="${i}"><b>${f.from.split(',')[0]}→${f.to.split(',')[0]}</b> <span class="x" data-del="${i}">✕</span></span>`).join('');
+  bar.querySelectorAll('.fav').forEach(el=>el.onclick=(e)=>{
+    if(e.target.classList.contains('x')) return;
+    const f=getFavs()[el.dataset.i]; if(!f)return;
+    $('fromInput').value=f.from; $('toInput').value=f.to; coordsFrom=f.coordsFrom||null; coordsTo=f.coordsTo||null;
+    $('calcBtn').click();
+  });
+  bar.querySelectorAll('.x').forEach(x=>x.onclick=(e)=>{ e.stopPropagation(); const a=getFavs(); a.splice(+x.dataset.del,1); setFavs(a); renderFavs(); });
+}
+$('favBtn').onclick=()=>{
+  const from=$('fromInput').value.trim(), to=$('toInput').value.trim();
+  if(!from||!to){ const s=$('routeStatus'); s.className='status err'; s.textContent='Συμπλήρωσε αφετηρία & προορισμό για αγαπημένη.'; return; }
+  const favs=getFavs();
+  if(favs.some(f=>f.from===from&&f.to===to)){ const s=$('routeStatus'); s.className='status'; s.textContent='Υπάρχει ήδη στις αγαπημένες ⭐'; return; }
+  favs.unshift({from,to,coordsFrom,coordsTo}); setFavs(favs.slice(0,12)); renderFavs();
+  const s=$('routeStatus'); s.className='status'; s.textContent='Προστέθηκε στις αγαπημένες ⭐';
+};
+
+/* ---------- 📱 QR κώδικας ---------- */
+$('qrBtn').onclick=()=>{
+  const url = (location.protocol==='http:'||location.protocol==='https:') ? location.href.split('#')[0] : 'https://xomagr-eng.github.io/proypologismos-taxidiou/';
+  const box=$('qrBox'); box.innerHTML='';
+  try{
+    const qr=qrcode(0,'M'); qr.addData(url); qr.make();
+    box.innerHTML=qr.createSvgTag({cellSize:5,margin:2,scalable:true});
+  }catch(e){ box.textContent='(αδυναμία δημιουργίας QR)'; }
+  $('qrUrl').textContent=url;
+  $('qrOverlay').style.display='flex';
+};
+$('qrClose').onclick=()=>$('qrOverlay').style.display='none';
+$('qrOverlay').onclick=(e)=>{ if(e.target===$('qrOverlay')) $('qrOverlay').style.display='none'; };
+
+/* ---------- 👋 Onboarding (πρώτη φορά) ---------- */
+$('onbClose').onclick=()=>{ $('onbOverlay').style.display='none'; localStorage.setItem('pt_seen','1'); };
+$('onbOverlay').onclick=(e)=>{ if(e.target===$('onbOverlay')){ $('onbOverlay').style.display='none'; localStorage.setItem('pt_seen','1'); } };
 
 /* ---------- Πλοήγηση (GPS) & ζωντανή θέση ---------- */
 function showNav(){ const n=$('navRow'); if(n) n.style.display = coordsTo? 'flex':'none'; }
@@ -959,10 +1070,13 @@ window.addEventListener('appinstalled',()=>{ $('installBtn').style.display='none
 
 /* ---------- Init ---------- */
 loadState();
+if($('retDiff').checked) $('retKmWrap').style.display='block';
 renderModes();
 recalc();
 renderTrips();
+renderFavs();
 showNav();
+if(!localStorage.getItem('pt_seen')) $('onbOverlay').style.display='flex';
 </script>
 </body>
 </html>
