@@ -1,5 +1,5 @@
 /* Service Worker — Προϋπολογισμός Ταξιδιού (offline/PWA) */
-const VERSION = 'pt-v3';
+const VERSION = 'pt-v4';
 const CORE = VERSION + '-core';
 const RUNTIME = VERSION + '-runtime';
 
